@@ -1,9 +1,11 @@
 import Vector from "../core/vector.js";
 import Circle from "../objects/circle.js";
 import Line from "../objects/line.js";
-import { getLine, INTER, intersect, LINE } from "./intersect.js";
+import Obj from "../objects/object.js";
+import { getLine, INTER, intersect, LINE, pointIntersect } from "./intersect.js";
 
-export const DEFAULT_POINT_RADIUS = 7;
+export const DEFAULT_POINT_RADIUS = 2;
+export const MAX_ANGLE_SHARP = 0;
 
 export type label = string | null;
 export type labelPair = [label, label] | null;
@@ -20,6 +22,8 @@ export class GraphLine extends Line {
 
 export class Point extends Circle {
 
+  lines: GraphLine[] = [];
+
   constructor(x: number, y: number, public label: label = null) {
     super(new Vector(x, y), DEFAULT_POINT_RADIUS, "black", true);
   }
@@ -28,10 +32,31 @@ export class Point extends Circle {
 
 export class BorderPoint extends Circle {
 
-  borders: GraphLine[] = [];
+  borders: Border[] = [];
+  excluded: boolean = false;
+  labels: labelPair = null;
 
-  constructor(x: number, y: number, public labels: labelPair= null) {
+  constructor(x: number, y: number, public line: GraphLine) {
     super(new Vector(x, y), DEFAULT_POINT_RADIUS, "black", true);
+    this.labels = this.line.labels;
+  }
+
+}
+
+export class Border extends GraphLine {
+
+  constructor(public p1: BorderPoint, public p2: BorderPoint) {
+    let labels: labelPair = null;
+    const v1 = p1.line.b.sub(p1.line.a);
+    const v2 = p2.line.b.sub(p2.line.a);
+    const v3 = p2.pos.sub(p1.pos);
+    const dot1 = v3.dot(v1);
+    const dot2 = v3.dot(v2);
+    const labels1 = dot1 >= 0 ? p1.labels : p1.labels?.reverse();
+    const labels2 = dot2 >= 0 ? p2.labels : p2.labels?.reverse();
+    // if(labels1?.toString() !== labels2?.toString())
+    //   console.log(dot1, dot2, labels1, labels2);
+    super(p1.pos, p2.pos, p1.labels);
   }
 
 }
@@ -55,7 +80,8 @@ export default class Graph {
   public linesLabeled: GraphLine[] = [];
   public inters: Inter[] = [];
   public borderPoints: BorderPoint[] = [];
-  public borders: GraphLine[] = [];
+  public borders: Border[] = [];
+  public debugObjects: Obj[] = [];
 
   constructor() {
 
@@ -77,7 +103,7 @@ export default class Graph {
     this.borderPoints.push(...points);
   }
 
-  addBorders(...lines: GraphLine[]) {
+  addBorders(...lines: Border[]) {
     this.borders.push(...lines);
   }
 
@@ -85,12 +111,14 @@ export default class Graph {
     this.createLines();
     this.getIntersections();
     this.filterShortestLines();
+    this.filterSharpAngles();
     this.createBorderPoints();
     this.createBorders();
     this.removeExcessiveBorders();
   }
 
   reset() {
+    this.points.forEach(p => p.lines = []);
     this.points = [];
     this.lines = [];
     this.linesEnabled = [];
@@ -98,6 +126,7 @@ export default class Graph {
     this.inters = [];
     this.borderPoints = [];
     this.borders = [];
+    this.debugObjects = [];
   }
 
   createLines() {
@@ -105,10 +134,12 @@ export default class Graph {
       const p1 = this.points[i];
       for(let j = i+1; j < this.points.length; j ++) {
         const p2 = this.points[j];
-        let label: labelPair = null;
+        let labels: labelPair = null;
         if(p1.label !== p2.label && p1.label != null && p2.label != null)
-          label = [p1.label, p2.label];
-        const line = new GraphLine(this.points[i].pos, this.points[j].pos, label);
+          labels = [p1.label, p2.label];
+        const line = new GraphLine(p1.pos, p2.pos, labels);
+        p1.lines.push(line);
+        p2.lines.push(line);
         this.addLines(line);
       }
     }
@@ -143,6 +174,29 @@ export default class Graph {
         }
       });
     });
+  }
+
+  filterSharpAngles() {
+    this.points.forEach(p => {
+      const lines = p.lines.filter(line => !line.disabled);
+      for(let i = 0; i < lines.length; i ++) {
+        const l1 = lines[i];
+        for(let j = i+1; j < lines.length; j ++) {
+          const l2 = lines[j];
+          const p1 = l1.a.equal(p.pos) ? l1.b : l1.a;
+          const p2 = l2.a.equal(p.pos) ? l2.b : l2.a;
+          const d1 = p.pos.sub(p1);
+          const d2 = p.pos.sub(p2);
+          let a = d1.angle - d2.angle;
+          if(Math.abs(a) <= MAX_ANGLE_SHARP || Math.abs(a) >= Math.PI*2 - MAX_ANGLE_SHARP) {
+            if(d1.length > d2.length)
+              l1.disabled = true;
+            else
+              l2.disabled = true;
+          }
+        }
+      }
+    });
     this.linesEnabled = this.lines.filter(line => !line.disabled);
     this.linesLabeled = this.linesEnabled.filter(line => line.labels != null);
   }
@@ -150,7 +204,7 @@ export default class Graph {
   createBorderPoints() {
     this.linesLabeled.forEach(line => {
       const p = line.a.add(line.b.sub(line.a).div(2));
-      this.addBorderPoints(new BorderPoint(p.x, p.y, line.labels));
+      this.addBorderPoints(new BorderPoint(p.x, p.y, line));
     });
   }
 
@@ -159,12 +213,19 @@ export default class Graph {
       const p1 = this.borderPoints[i];
       second: for(let j = i+1; j < this.borderPoints.length; j ++) {
         const p2 = this.borderPoints[j];
-        if(
-          (p1.labels![0] !== p2.labels![0] && p1.labels![1] !== p2.labels![1]) &&
-          (p1.labels![1] !== p2.labels![0] && p1.labels![0] !== p2.labels![1])
-        ) 
-          continue second;
-        const border = new GraphLine(p1.pos, p2.pos, p1.labels);
+        // // if(
+        // //   (p1.labels![0] !== p2.labels![0] && p1.labels![1] !== p2.labels![1]) &&
+        // //   (p1.labels![1] !== p2.labels![0] && p1.labels![0] !== p2.labels![1])
+        // // ) 
+        // //   continue second;
+        // if(
+        //   !(
+        //     (p1.labels![0] === p2.labels![0] && p1.labels![1] === p2.labels![1]) ||
+        //     (p1.labels![1] === p2.labels![0] && p1.labels![0] === p2.labels![1])
+        //   )
+        // ) continue second;
+        // console.log(p1.labels, p2.labels);
+        const border = new Border(p1, p2);
         p1.borders.push(border);
         p2.borders.push(border);
         this.addBorders(border);
@@ -175,8 +236,6 @@ export default class Graph {
   removeExcessiveBorders() {
     this.borders.forEach(border => {
       const l1 = getLine(border);
-      if(l1[LINE.INF])
-        border.color = "red";
       this.linesEnabled.forEach(line => {
         const l2 = getLine(line);
         const inter = intersect(l1, l2);
@@ -184,41 +243,93 @@ export default class Graph {
           border.disabled = true;
       });
     });
-    // this.borderPoints.forEach(point => {
-    //   const borders = point.borders.filter(border => !border.disabled);
-    //   if(borders.length <= 2) return;
-    //   borders.sort((a, b) => a.length - b.length);
-    //   for(let i = borders.length-1; i > 2; i--) {
-    //     borders[i].disabled = true;
-    //   }
-    // });
-    // const borders = this.borders.filter(border => !border.disabled);
-    // const inters: Inter[] = [];
-    // for(let i = 0; i < borders.length; i ++) {
-    //   const line1 = getLine(borders[i]);
-    //   for(let j = i+1; j < borders.length; j ++) {
-    //     const line2 = getLine(borders[j]);
-    //     const inter = intersect(line1, line2);
-    //     if(inter[INTER.RES])
-    //       inters.push(new Inter(inter[INTER.X], inter[INTER.Y], borders[i], borders[j]));
-    //   }
-    // }
-    // inters.forEach(inter => {
-    //   const lines = inter.lines.filter(line => !line.disabled);
-    //   if(lines.length <= 1) return;
-    //   const length = Math.min(...lines.map(line => line.length));
-    //   let shortest: GraphLine | null = null;
-    //   lines.forEach(line => {
-    //     if(line.length !== length)
-    //       line.disabled = true;
-    //     else {
-    //       if(shortest == null)
-    //         shortest = line;
-    //       else
-    //         line.disabled = true;
+    this.borders.filter(border => !border.disabled).forEach(border => {
+      const l = getLine(border);
+      this.points.forEach(p => {
+        if(pointIntersect(p.pos, l))
+          border.disabled = true;
+      });
+    });
+    this.removeIntersectingBorders();
+    const triangles = this.getBorderTriangles();
+    this.tackleBorderTriangles(triangles);
+  }
+
+  removeIntersectingBorders() {
+    const borders = this.borders.filter(border => !border.disabled);
+    const inters: Inter[] = [];
+    for(let i = 0; i < borders.length; i ++) {
+      const line1 = getLine(borders[i]);
+      for(let j = i+1; j < borders.length; j ++) {
+        const line2 = getLine(borders[j]);
+        const inter = intersect(line1, line2);
+        if(inter[INTER.RES])
+          inters.push(new Inter(inter[INTER.X], inter[INTER.Y], borders[i], borders[j]));
+      }
+    }
+    inters.forEach(inter => {
+      const lines = inter.lines.filter(line => !line.disabled);
+      if(lines.length <= 1) return;
+      const length = Math.min(...lines.map(line => line.length));
+      let shortest: GraphLine | null = null;
+      lines.forEach(line => {
+        if(line.length !== length)
+          line.disabled = true;
+        else {
+          if(shortest == null)
+            shortest = line;
+          else
+            line.disabled = true;
+        }
+      });
+    });
+  }
+
+  getBorderTriangles() {
+    let triangles: [BorderPoint, BorderPoint, BorderPoint][] = [];
+    const points = this.borderPoints.filter(p => p.borders.filter(b => !b.disabled).length > 2);
+    points.forEach(p => {
+      if(p.excluded) return;
+      this.debugObjects.push(new Point(p.pos.x, p.pos.y));
+      const borders = p.borders.filter(b => !b.disabled);
+      const neighbors = borders.map(border => border.p1.pos.equal(p.pos) ? border.p2 : border.p1);
+      neighbors.forEach(n => {
+        const nextBorders = n.borders.filter(border => !border.disabled);
+        const nextNeighbors = nextBorders.map(border => border.p1.pos.equal(n.pos) ? border.p2 : border.p1);
+        nextNeighbors.forEach(nn => {
+          if(nn.pos.equal(p.pos)) return;
+          if(nn.borders.filter(b => !b.disabled).length <= 2) return;
+          if(neighbors.includes(nn)) {
+            triangles.push([p, n, nn]);
+            p.excluded = true;
+            n.excluded = true;
+            nn.excluded = true;
+          }
+        });
+      });
+    });
+    triangles = triangles.filter((t, i) => {
+      for(const t2 of triangles.slice(i+1)) {
+        if(t.includes(t2[0]) && t.includes(t2[1]) && t.includes(t2[2]))
+          return false;
+      }
+      return true;
+    });
+    return triangles;
+  }
+
+  tackleBorderTriangles(triangles: [BorderPoint, BorderPoint, BorderPoint][]) {
+    // triangles.forEach(t => {
+    //   let type2: boolean = false;
+    //   t.forEach(n => {
+    //     const borders = n.borders.filter(b => !b.disabled);
+    //     if(borders.length === 4) {
+    //       type2 = true;
+    //       // border
     //     }
-    //   });
+    //   })
     // });
+    // triangles.forEach(t => t.forEach(p => p.borders.forEach(b => b.disabled = true)));
   }
 
 }

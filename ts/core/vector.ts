@@ -34,6 +34,10 @@ export default class Vector {
     return new Vector(Math.cos(angle), Math.sin(angle)).mult(this.length);
   }
 
+  equal(vec: Vector) {
+    return this.x === vec.x && this.y === vec.y;
+  }
+
   get norm() {
     return this.div(this.length);
   }

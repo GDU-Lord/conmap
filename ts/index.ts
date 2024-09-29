@@ -26,6 +26,8 @@ const points: Point[] = json.map(p => new Point(+p[0], +p[1], String(p[2])));
 //   points.push(new Point(Math.random() * cvs.width, Math.random() * cvs.height, "blue"));
 // }
 
+let c = 0;
+
 function run() {
 
   cvs.clear();
@@ -36,11 +38,15 @@ function run() {
 
   // g.lines.filter(line => line.disabled).forEach(o => o.render(cvs, "yellow"));
   // g.inters.forEach(o => o.render(cvs, "orange", 1));
-  // g.linesEnabled.forEach(o => o.render(cvs, "red"));
+  g.linesEnabled.forEach(o => o.render(cvs, "orange"));
   // g.borders.filter(line => line.disabled).forEach(o => o.render(cvs, "blue"));
-  g.borders.filter(line => !line.disabled).forEach(o => o.render(cvs));
+  // g.borders.filter(line => line.disabled).forEach(o => o.render(cvs));
+  g.borders.filter(line => !line.disabled).forEach(o => o.render(cvs, o.labels![0]!));
+  g.borders.filter(line => !line.disabled).forEach(o => o.render(cvs, o.labels![1]!));
   g.points.forEach(o => o.render(cvs, String(o.label)));
   // g.borderPoints.forEach(o => o.render(cvs));
+
+  // g.debugObjects.forEach(o => o.render(cvs, "yellow"));
   
   g.reset();
 
@@ -56,7 +62,7 @@ function run() {
   //   if(p.pos.y < 0)
   //     p.pos.y += cvs.height;
   // });
-
+  // c ++;
   // requestAnimationFrame(run);
 
 }

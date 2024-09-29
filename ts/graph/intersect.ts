@@ -1,7 +1,7 @@
 import Vector from "../core/vector.js";
 import { GraphLine } from "./graph.js";
 
-const SEGMENT_BOUNDRY_TOLLERANCE = 0.1;
+const SEGMENT_BOUNDRY_TOLLERANCE = 0.000000000001;
 
 export type line = [number, number, number, boolean, GraphLine];
 
@@ -28,7 +28,7 @@ export function getLine(line: GraphLine): line {
   return [ratio, b, line.a.x, Math.abs(ratio) === Infinity, line];
 }
 
-export function intersect(a: line, b: line, debug: boolean = false): inter {
+export function intersect(a: line, b: line): inter {
 
   let res: boolean;
   let x: number, y: number;
@@ -36,19 +36,16 @@ export function intersect(a: line, b: line, debug: boolean = false): inter {
     res = false;
     x = Infinity;
     y = Infinity;
-    if(debug) console.log("inf0", x, y, res);
   }
   else if(a[LINE.INF]) {
     x = a[LINE.X];
     y = b[LINE.RATIO] * x + b[LINE.B];
     res = true;
-    if(debug) console.log("inf1", x, y, res);
   }
   else if(b[LINE.INF]) {
     x = b[LINE.X];
     y = a[LINE.RATIO] * x + a[LINE.B];
     res = true;
-    if(debug) console.log("inf2", x, y, res);
   }
   else {
     x = (b[LINE.B]-a[LINE.B])/(a[LINE.RATIO]-b[LINE.RATIO]);
@@ -70,4 +67,20 @@ export function intersect(a: line, b: line, debug: boolean = false): inter {
 
   return [x, y, res];
 
+}
+
+export function pointIntersect(p: Vector, line: line) {
+  let res: boolean;
+  if(line[LINE.INF])
+    res = p.x === line[LINE.X];
+  else
+    res = p.y === (line[LINE.RATIO] * p.x + line[LINE.B]);
+  if(res) {
+    const lax = Math.min(line[LINE.SEG].a.x, line[LINE.SEG].b.x) + SEGMENT_BOUNDRY_TOLLERANCE;
+    const lbx = Math.max(line[LINE.SEG].a.x, line[LINE.SEG].b.x) - SEGMENT_BOUNDRY_TOLLERANCE;
+    const lay = Math.min(line[LINE.SEG].a.y, line[LINE.SEG].b.y) + SEGMENT_BOUNDRY_TOLLERANCE;
+    const lby = Math.max(line[LINE.SEG].a.y, line[LINE.SEG].b.y) - SEGMENT_BOUNDRY_TOLLERANCE;
+    res = (p.x > lax && p.x < lbx) || (p.y > lay && p.y < lby);
+  }
+  return res;
 }
