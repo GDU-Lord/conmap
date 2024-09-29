@@ -183,6 +183,7 @@ export default class Graph {
   }
 
   getIntersections() {
+    this.lines = this.lines.sort((a, b) => a.length - b.length);
     for(let i = 0; i < this.lines.length; i ++) {
       const line1 = getLine(this.lines[i]);
       for(let j = i+1; j < this.lines.length; j ++) {
@@ -196,20 +197,15 @@ export default class Graph {
 
   filterShortestLines() {
     this.inters.forEach(inter => {
-      const lines = inter.lines.filter(line => !line.disabled);
-      if(lines.length <= 1) return;
-      const length = Math.min(...lines.map(line => line.length));
-      let shortest: GraphLine | null = null;
-      lines.forEach(line => {
-        if(line.length !== length)
-          line.disabled = true;
-        else {
-          if(shortest == null)
-            shortest = line;
-          else
-            line.disabled = true;
-        }
-      });
+      if(inter.lines[0].disabled || inter.lines[1].disabled) return;
+      if(inter.lines[0].length >= inter.lines[1].length) {
+        inter.lines[0].disabled = true;
+        console.log(inter.lines[0].length, inter.lines[1].length);
+      }
+      else {
+        inter.lines[1].disabled = true;
+        console.log(inter.lines[1].length, inter.lines[0].length);
+      }
     });
   }
 
@@ -268,17 +264,20 @@ export default class Graph {
         this.addBorders(border);
       }
     }
+    console.log(this.borders.length);
   }
 
   removeExcessiveBorders() {
-    this.borders.forEach(border => {
+    this.borders.filter(b => !b.disabled).forEach((border, i) => {
       const l1 = getLine(border);
-      this.linesEnabled.forEach(line => {
+      this.linesEnabled.forEach((line, j) => {
         const l2 = getLine(line);
         const inter = intersect(l1, l2);
-        if(inter[INTER.RES])
+        if(inter[INTER.RES]) {
           border.disabled = true;
+        }
       });
+      
     });
     this.borders.filter(border => !border.disabled).forEach(border => {
       const l = getLine(border);
@@ -376,11 +375,11 @@ export default class Graph {
     });
     borderTriangles.forEach((t, i) => {
       t.forEach((border, j) => {
-        if(i === 3 && j === 1) {
-          console.log("debug", t[j]);
-          this.debugObjects.push(new Point(border.a.x, border.a.y));
-          this.debugObjects.push(new Point(border.b.x, border.b.y));
-        }
+        // if(i === 2 && j === 0) {
+        //   // console.log("debug", t[j]);
+        //   this.debugObjects.push(new Point(border.a.x, border.a.y));
+        //   this.debugObjects.push(new Point(border.b.x, border.b.y));
+        // }
         const v1 = border.p1.line.b.sub(border.p1.line.a).rot(Math.PI/2);
         const v2 = border.p2.line.b.sub(border.p2.line.a).rot(Math.PI/2);
         const v3 = border.b.sub(border.a);

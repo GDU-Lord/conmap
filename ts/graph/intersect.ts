@@ -1,7 +1,7 @@
 import Vector from "../core/vector.js";
 import { GraphLine } from "./graph.js";
 
-const SEGMENT_BOUNDRY_TOLLERANCE = 0.000000000001;
+const SEGMENT_BOUNDRY_TOLLERANCE = 0.0000000001;
 
 export type line = [number, number, number, boolean, GraphLine];
 

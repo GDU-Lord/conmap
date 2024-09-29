@@ -5,7 +5,7 @@ import Graph, { DEFAULT_POINT_RADIUS, label, Point } from "./graph/graph.js";
 import Circle from "./objects/circle.js";
 import Line from "./objects/line.js";
 
-const S = 5;
+const S = 1;
 
 const cvs = new Canvas(document.body, 500, 500);
 cvs.cvs.style.border = "1px solid black";
@@ -37,17 +37,17 @@ function run() {
 
   g.build();
 
-  g.lines.filter(line => line.disabled).forEach(o => o.render(cvs, "yellow"));
+  // g.lines.filter(line => line.disabled).forEach(o => o.render(cvs, "yellow"));
   // g.inters.forEach(o => o.render(cvs, "orange", 1));
-  g.linesEnabled.forEach(o => o.render(cvs, "orange"));
+  // g.linesEnabled.forEach(o => o.render(cvs, "yellow"));
   // g.borders.filter(line => line.disabled).forEach(o => o.render(cvs, "blue"));
   // g.borders.filter(line => line.disabled).forEach(o => o.render(cvs));
   g.borders.filter(line => !line.disabled).forEach(o => o.render(cvs, o.labels![0]!));
   g.borders.filter(line => !line.disabled).forEach(o => o.render(cvs, o.labels![1]!));
-  g.points.forEach(o => o.render(cvs, String(o.label)));
+  g.points.forEach(o => o.render(cvs, String(o.label ?? "black"), 5));
   // g.borderPoints.forEach(o => o.render(cvs));
 
-  g.debugObjects.forEach(o => o.render(cvs, "yellow"));
+  // g.debugObjects.forEach(o => o.render(cvs, "yellow"));
   
   g.reset();
 
@@ -78,17 +78,24 @@ cvs.cvs.addEventListener("mouseup", (e => {
   e.preventDefault();
   const x = e.offsetX;
   const y = e.offsetY;
-  const label: label = ["red", "blue", "green"][e.button];
+
   if(e.button === 2) {
     for(let i = 0; i < points.length; i ++)
-      if(points[i].pos.sub(new Vector(x, y)).length <= DEFAULT_POINT_RADIUS*2)
+      if(points[i].pos.sub(new Vector(x, y)).length <= 5*2)
         points.splice(i, 1);
   }
   else {
-    points.push(new Point(x, y, label));
+    if(e.shiftKey)
+      points.push(new Point(x, y, "red"));
+    else if(e.ctrlKey)
+      points.push(new Point(x, y, "blue"));
+    else
+      points.push(new Point(x, y, "green"));
   }
   
   
   run();
   console.log(JSON.stringify(points.map(p => [p.pos.x, p.pos.y, p.label])));
 }));
+
+// optimize
