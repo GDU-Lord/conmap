@@ -1,7 +1,7 @@
 import Vector from "../core/vector.js";
 import { GraphLine } from "./graph.js";
 
-const SEGMENT_BOUNDRY_TOLLERANCE = 0.1;
+const SEGMENT_BOUNDRY_TOLLERANCE = 0.0000000001;
 
 export type line = [number, number, number, boolean, GraphLine];
 
@@ -32,7 +32,7 @@ export function intersect(a: line, b: line): inter {
 
   let res: boolean;
   let x: number, y: number;
-  if(a[LINE.INF] && a[LINE.INF]) {
+  if(a[LINE.INF] && b[LINE.INF]) {
     res = false;
     x = Infinity;
     y = Infinity;
@@ -58,9 +58,29 @@ export function intersect(a: line, b: line): inter {
     const l1bx = Math.max(a[LINE.SEG].a.x, a[LINE.SEG].b.x) - SEGMENT_BOUNDRY_TOLLERANCE;
     const l2ax = Math.min(b[LINE.SEG].a.x, b[LINE.SEG].b.x) + SEGMENT_BOUNDRY_TOLLERANCE;
     const l2bx = Math.max(b[LINE.SEG].a.x, b[LINE.SEG].b.x) - SEGMENT_BOUNDRY_TOLLERANCE;
-    res = x > l1ax && x < l1bx && x > l2ax && x < l2bx;
+    const l1ay = Math.min(a[LINE.SEG].a.y, a[LINE.SEG].b.y) + SEGMENT_BOUNDRY_TOLLERANCE;
+    const l1by = Math.max(a[LINE.SEG].a.y, a[LINE.SEG].b.y) - SEGMENT_BOUNDRY_TOLLERANCE;
+    const l2ay = Math.min(b[LINE.SEG].a.y, b[LINE.SEG].b.y) + SEGMENT_BOUNDRY_TOLLERANCE;
+    const l2by = Math.max(b[LINE.SEG].a.y, b[LINE.SEG].b.y) - SEGMENT_BOUNDRY_TOLLERANCE;
+    res = (x > l1ax && x < l1bx && x > l2ax && x < l2bx) || (y > l1ay && y < l1by && y > l2ay && y < l2by);
   }
 
   return [x, y, res];
 
+}
+
+export function pointIntersect(p: Vector, line: line) {
+  let res: boolean;
+  if(line[LINE.INF])
+    res = p.x === line[LINE.X];
+  else
+    res = p.y === (line[LINE.RATIO] * p.x + line[LINE.B]);
+  if(res) {
+    const lax = Math.min(line[LINE.SEG].a.x, line[LINE.SEG].b.x) + SEGMENT_BOUNDRY_TOLLERANCE;
+    const lbx = Math.max(line[LINE.SEG].a.x, line[LINE.SEG].b.x) - SEGMENT_BOUNDRY_TOLLERANCE;
+    const lay = Math.min(line[LINE.SEG].a.y, line[LINE.SEG].b.y) + SEGMENT_BOUNDRY_TOLLERANCE;
+    const lby = Math.max(line[LINE.SEG].a.y, line[LINE.SEG].b.y) - SEGMENT_BOUNDRY_TOLLERANCE;
+    res = (p.x > lax && p.x < lbx) || (p.y > lay && p.y < lby);
+  }
+  return res;
 }

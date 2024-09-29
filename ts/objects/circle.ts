@@ -13,9 +13,9 @@ export default class Circle extends Obj {
     super(color);
   }
 
-  render(renderer: Canvas, color: string = this.color): void {
+  render(renderer: Canvas, color: string = this.color, r: number = this.r): void {
     renderer.ctx.beginPath();
-    renderer.ctx.arc(this.pos.x, this.pos.y, this.r, 0, Math.PI*2);
+    renderer.ctx.arc(this.pos.x, this.pos.y, r, 0, Math.PI*2);
     if(this.fill) {
       renderer.ctx.fillStyle = color;
       renderer.ctx.fill();
