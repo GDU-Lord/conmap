@@ -58,7 +58,11 @@ export function intersect(a: line, b: line): inter {
     const l1bx = Math.max(a[LINE.SEG].a.x, a[LINE.SEG].b.x) - SEGMENT_BOUNDRY_TOLLERANCE;
     const l2ax = Math.min(b[LINE.SEG].a.x, b[LINE.SEG].b.x) + SEGMENT_BOUNDRY_TOLLERANCE;
     const l2bx = Math.max(b[LINE.SEG].a.x, b[LINE.SEG].b.x) - SEGMENT_BOUNDRY_TOLLERANCE;
-    res = x > l1ax && x < l1bx && x > l2ax && x < l2bx;
+    const l1ay = Math.min(a[LINE.SEG].a.y, a[LINE.SEG].b.y) + SEGMENT_BOUNDRY_TOLLERANCE;
+    const l1by = Math.max(a[LINE.SEG].a.y, a[LINE.SEG].b.y) - SEGMENT_BOUNDRY_TOLLERANCE;
+    const l2ay = Math.min(b[LINE.SEG].a.y, b[LINE.SEG].b.y) + SEGMENT_BOUNDRY_TOLLERANCE;
+    const l2by = Math.max(b[LINE.SEG].a.y, b[LINE.SEG].b.y) - SEGMENT_BOUNDRY_TOLLERANCE;
+    res = (x > l1ax && x < l1bx && x > l2ax && x < l2bx) || (y > l1ay && y < l1by && y > l2ay && y < l2by);
   }
 
   return [x, y, res];
