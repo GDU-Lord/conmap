@@ -1,7 +1,7 @@
 import Vector from "../core/vector.js";
 import Circle from "../objects/circle.js";
 import Line from "../objects/line.js";
-import { getLine, INTER, intersect } from "./intersect.js";
+import { getLine, INTER, intersect, LINE } from "./intersect.js";
 
 export const DEFAULT_POINT_RADIUS = 7;
 
@@ -175,6 +175,8 @@ export default class Graph {
   removeExcessiveBorders() {
     this.borders.forEach(border => {
       const l1 = getLine(border);
+      if(l1[LINE.INF])
+        border.color = "red";
       this.linesEnabled.forEach(line => {
         const l2 = getLine(line);
         const inter = intersect(l1, l2);
@@ -190,33 +192,33 @@ export default class Graph {
     //     borders[i].disabled = true;
     //   }
     // });
-    const borders = this.borders.filter(border => !border.disabled);
-    const inters: Inter[] = [];
-    for(let i = 0; i < borders.length; i ++) {
-      const line1 = getLine(borders[i]);
-      for(let j = i+1; j < borders.length; j ++) {
-        const line2 = getLine(borders[j]);
-        const inter = intersect(line1, line2);
-        if(inter[INTER.RES])
-          inters.push(new Inter(inter[INTER.X], inter[INTER.Y], borders[i], borders[j]));
-      }
-    }
-    inters.forEach(inter => {
-      const lines = inter.lines.filter(line => !line.disabled);
-      if(lines.length <= 1) return;
-      const length = Math.min(...lines.map(line => line.length));
-      let shortest: GraphLine | null = null;
-      lines.forEach(line => {
-        if(line.length !== length)
-          line.disabled = true;
-        else {
-          if(shortest == null)
-            shortest = line;
-          else
-            line.disabled = true;
-        }
-      });
-    });
+    // const borders = this.borders.filter(border => !border.disabled);
+    // const inters: Inter[] = [];
+    // for(let i = 0; i < borders.length; i ++) {
+    //   const line1 = getLine(borders[i]);
+    //   for(let j = i+1; j < borders.length; j ++) {
+    //     const line2 = getLine(borders[j]);
+    //     const inter = intersect(line1, line2);
+    //     if(inter[INTER.RES])
+    //       inters.push(new Inter(inter[INTER.X], inter[INTER.Y], borders[i], borders[j]));
+    //   }
+    // }
+    // inters.forEach(inter => {
+    //   const lines = inter.lines.filter(line => !line.disabled);
+    //   if(lines.length <= 1) return;
+    //   const length = Math.min(...lines.map(line => line.length));
+    //   let shortest: GraphLine | null = null;
+    //   lines.forEach(line => {
+    //     if(line.length !== length)
+    //       line.disabled = true;
+    //     else {
+    //       if(shortest == null)
+    //         shortest = line;
+    //       else
+    //         line.disabled = true;
+    //     }
+    //   });
+    // });
   }
 
 }

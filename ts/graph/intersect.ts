@@ -28,24 +28,27 @@ export function getLine(line: GraphLine): line {
   return [ratio, b, line.a.x, Math.abs(ratio) === Infinity, line];
 }
 
-export function intersect(a: line, b: line): inter {
+export function intersect(a: line, b: line, debug: boolean = false): inter {
 
   let res: boolean;
   let x: number, y: number;
-  if(a[LINE.INF] && a[LINE.INF]) {
+  if(a[LINE.INF] && b[LINE.INF]) {
     res = false;
     x = Infinity;
     y = Infinity;
+    if(debug) console.log("inf0", x, y, res);
   }
   else if(a[LINE.INF]) {
     x = a[LINE.X];
     y = b[LINE.RATIO] * x + b[LINE.B];
     res = true;
+    if(debug) console.log("inf1", x, y, res);
   }
   else if(b[LINE.INF]) {
     x = b[LINE.X];
     y = a[LINE.RATIO] * x + a[LINE.B];
     res = true;
+    if(debug) console.log("inf2", x, y, res);
   }
   else {
     x = (b[LINE.B]-a[LINE.B])/(a[LINE.RATIO]-b[LINE.RATIO]);
