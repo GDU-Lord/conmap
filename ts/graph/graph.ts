@@ -3,6 +3,7 @@ import Circle from "../objects/circle.js";
 import Line from "../objects/line.js";
 import Obj from "../objects/object.js";
 import { getLine, INTER, intersect, LINE, pointIntersect } from "./intersect.js";
+import { getLable, getNumber, LABELS } from "./label.js";
 
 export const DEFAULT_POINT_RADIUS = 2;
 export const MAX_ANGLE_SHARP = 0;
@@ -45,17 +46,9 @@ export class BorderPoint extends Circle {
 
 export class Border extends GraphLine {
 
+  gradient: gradient = [];
+
   constructor(public p1: BorderPoint, public p2: BorderPoint) {
-    let labels: labelPair = null;
-    const v1 = p1.line.b.sub(p1.line.a);
-    const v2 = p2.line.b.sub(p2.line.a);
-    const v3 = p2.pos.sub(p1.pos);
-    const dot1 = v3.dot(v1);
-    const dot2 = v3.dot(v2);
-    const labels1 = dot1 >= 0 ? p1.labels : p1.labels?.reverse();
-    const labels2 = dot2 >= 0 ? p2.labels : p2.labels?.reverse();
-    // if(labels1?.toString() !== labels2?.toString())
-    //   console.log(dot1, dot2, labels1, labels2);
     super(p1.pos, p2.pos, p1.labels);
   }
 
@@ -70,6 +63,50 @@ export class Inter extends Point {
     this.lines = lines;
   }
   
+}
+
+export type gradient = (label | labelPair)[];
+
+export class Triangle {
+
+  constructor(public borders: Border[]) {
+    let labels: label[] = [];
+    let appear: boolean[] = [];
+    let flattenedAll: label[][] = [];
+    this.borders.forEach(b => {
+      const flattened: label[] = [];
+      flattenedAll.push(flattened);
+      b.gradient.forEach(g => {
+        if(g instanceof Array)
+          flattened.push(...g);
+        else
+          flattened.push(g);
+      });
+      for(const g of flattened) {
+        if(!labels.includes(g)) {
+          labels.push(g);
+          appear.push(true);
+        }
+      }
+    });
+    flattenedAll.forEach(f => {
+      for(let i = 0; i < labels.length; i ++) {
+        if(!f.includes(labels[i]))
+          appear[i] = false;
+      }
+    });
+    labels = labels.filter((l, i) => appear[i]);
+    const strongerLable = getLable(Math.max(...labels.map(l => getNumber(l as LABELS))));
+    console.log(this, strongerLable, this.borders[0].gradient, this.borders[1].gradient, this.borders[2].gradient);
+    this.borders.forEach(b => {
+      if(
+        ((typeof b.gradient[0] === "string" && b.gradient[0] !== strongerLable) || 
+        (typeof b.gradient[1] === "string" && b.gradient[1] !== strongerLable))
+      ) return;
+      b.disabled = true;
+    });
+  }
+
 }
 
 export default class Graph {
@@ -290,7 +327,6 @@ export default class Graph {
     const points = this.borderPoints.filter(p => p.borders.filter(b => !b.disabled).length > 2);
     points.forEach(p => {
       if(p.excluded) return;
-      this.debugObjects.push(new Point(p.pos.x, p.pos.y));
       const borders = p.borders.filter(b => !b.disabled);
       const neighbors = borders.map(border => border.p1.pos.equal(p.pos) ? border.p2 : border.p1);
       neighbors.forEach(n => {
@@ -319,16 +355,54 @@ export default class Graph {
   }
 
   tackleBorderTriangles(triangles: [BorderPoint, BorderPoint, BorderPoint][]) {
-    // triangles.forEach(t => {
-    //   let type2: boolean = false;
-    //   t.forEach(n => {
-    //     const borders = n.borders.filter(b => !b.disabled);
-    //     if(borders.length === 4) {
-    //       type2 = true;
-    //       // border
-    //     }
-    //   })
-    // });
+    const objectTriangles: Triangle[] = [];
+    const borderTriangles = triangles.map(t => {
+      let tBorders: Border[] = [];
+      t.forEach(n => {
+        const borders = n.borders.filter(b => !b.disabled);
+        borders.forEach(b => {
+          if(t.includes(b.p1) && t.includes(b.p2))
+            tBorders.push(b);
+        });
+      })
+      tBorders = tBorders.filter((b, i) => {
+        for(const b2 of tBorders.slice(i+1)) {
+          if(b.p1.pos.equal(b2.p1.pos) && b.p2.pos.equal(b2.p2.pos))
+            return false;
+        }
+        return true;
+      });
+      return tBorders as [Border, Border, Border];
+    });
+    borderTriangles.forEach((t, i) => {
+      t.forEach((border, j) => {
+        if(i === 3 && j === 1) {
+          console.log("debug", t[j]);
+          this.debugObjects.push(new Point(border.a.x, border.a.y));
+          this.debugObjects.push(new Point(border.b.x, border.b.y));
+        }
+        const v1 = border.p1.line.b.sub(border.p1.line.a).rot(Math.PI/2);
+        const v2 = border.p2.line.b.sub(border.p2.line.a).rot(Math.PI/2);
+        const v3 = border.b.sub(border.a);
+        const d1 = v3.dot(v1);
+        const d2 = v3.dot(v2);
+        const labels1 = d1 > 0 ? border.p1.labels! : [border.p1.labels![1], border.p1.labels![0]];
+        const labels2 = d2 > 0 ? border.p2.labels! : [border.p2.labels![1], border.p2.labels![0]];
+        if(labels1[0] === labels2[0] && labels1[1] === labels2[1]) {
+          border.gradient = [labels1[0], labels1[1]];
+        }
+        else if(labels1[0] === labels2[0]) {
+          border.gradient = [labels1[0], [labels1[1], labels2[1]]];
+        }
+        else if(labels1[1] === labels2[1]) {
+          border.gradient = [[labels1[0], labels2[0]], labels1[1]];
+        }
+        else {
+          border.gradient = [[labels1[0], labels2[0]], [labels1[1], labels2[1]]];
+        }
+      });
+      objectTriangles.push(new Triangle(t));
+    });
     // triangles.forEach(t => t.forEach(p => p.borders.forEach(b => b.disabled = true)));
   }
 

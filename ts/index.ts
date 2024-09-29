@@ -13,6 +13,7 @@ cvs.cvs.style.border = "1px solid black";
 const g = new Graph();
 
 const points: Point[] = json.map(p => new Point(+p[0], +p[1], String(p[2])));
+// const points: Point[] = [];
 
 // for(let i = 0; i < 5; i ++) {
 //   points.push(new Point(Math.random() * cvs.width, Math.random() * cvs.height, "green"));
@@ -36,7 +37,7 @@ function run() {
 
   g.build();
 
-  // g.lines.filter(line => line.disabled).forEach(o => o.render(cvs, "yellow"));
+  g.lines.filter(line => line.disabled).forEach(o => o.render(cvs, "yellow"));
   // g.inters.forEach(o => o.render(cvs, "orange", 1));
   g.linesEnabled.forEach(o => o.render(cvs, "orange"));
   // g.borders.filter(line => line.disabled).forEach(o => o.render(cvs, "blue"));
@@ -46,7 +47,7 @@ function run() {
   g.points.forEach(o => o.render(cvs, String(o.label)));
   // g.borderPoints.forEach(o => o.render(cvs));
 
-  // g.debugObjects.forEach(o => o.render(cvs, "yellow"));
+  g.debugObjects.forEach(o => o.render(cvs, "yellow"));
   
   g.reset();
 
@@ -78,10 +79,16 @@ cvs.cvs.addEventListener("mouseup", (e => {
   const x = e.offsetX;
   const y = e.offsetY;
   const label: label = ["red", "blue", "green"][e.button];
-  for(let i = 0; i < points.length; i ++)
-    if(points[i].pos.sub(new Vector(x, y)).length <= DEFAULT_POINT_RADIUS*2)
-      points.splice(i, 1);
-  points.push(new Point(x, y, label));
+  if(e.button === 2) {
+    for(let i = 0; i < points.length; i ++)
+      if(points[i].pos.sub(new Vector(x, y)).length <= DEFAULT_POINT_RADIUS*2)
+        points.splice(i, 1);
+  }
+  else {
+    points.push(new Point(x, y, label));
+  }
+  
+  
   run();
   console.log(JSON.stringify(points.map(p => [p.pos.x, p.pos.y, p.label])));
 }));
