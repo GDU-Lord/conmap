@@ -34,7 +34,6 @@ export class Point extends Circle {
 export class BorderPoint extends Circle {
 
   borders: Border[] = [];
-  excluded: boolean = false;
   labels: labelPair = null;
 
   constructor(x: number, y: number, public line: GraphLine) {
@@ -97,7 +96,6 @@ export class Triangle {
     });
     labels = labels.filter((l, i) => appear[i]);
     const strongerLable = getLable(Math.max(...labels.map(l => getNumber(l as LABELS))));
-    console.log(this, strongerLable, this.borders[0].gradient, this.borders[1].gradient, this.borders[2].gradient);
     this.borders.forEach(b => {
       if(
         ((typeof b.gradient[0] === "string" && b.gradient[0] !== strongerLable) || 
@@ -112,6 +110,7 @@ export class Triangle {
 export default class Graph {
 
   public points: Point[] = [];
+  public mapPoints: Point[] = [];
   public lines: GraphLine[] = [];
   public linesEnabled: GraphLine[] = [];
   public linesLabeled: GraphLine[] = [];
@@ -144,6 +143,10 @@ export default class Graph {
     this.borders.push(...lines);
   }
 
+  addMapPoints(...points: Point[]) {
+    this.mapPoints.push(...points);
+  }
+
   build() {
     this.createLines();
     this.getIntersections();
@@ -156,6 +159,7 @@ export default class Graph {
 
   reset() {
     this.points.forEach(p => p.lines = []);
+    this.borderPoints = [];
     this.points = [];
     this.lines = [];
     this.linesEnabled = [];
@@ -200,11 +204,9 @@ export default class Graph {
       if(inter.lines[0].disabled || inter.lines[1].disabled) return;
       if(inter.lines[0].length >= inter.lines[1].length) {
         inter.lines[0].disabled = true;
-        console.log(inter.lines[0].length, inter.lines[1].length);
       }
       else {
         inter.lines[1].disabled = true;
-        console.log(inter.lines[1].length, inter.lines[0].length);
       }
     });
   }
@@ -242,10 +244,11 @@ export default class Graph {
   }
 
   createBorders() {
-    for(let i = 0; i < this.borderPoints.length; i ++) {
-      const p1 = this.borderPoints[i];
-      second: for(let j = i+1; j < this.borderPoints.length; j ++) {
-        const p2 = this.borderPoints[j];
+    const borderPoints = this.borderPoints;
+    for(let i = 0; i < borderPoints.length; i ++) {
+      const p1 = borderPoints[i];
+      second: for(let j = i+1; j < borderPoints.length; j ++) {
+        const p2 = borderPoints[j];
         // // if(
         // //   (p1.labels![0] !== p2.labels![0] && p1.labels![1] !== p2.labels![1]) &&
         // //   (p1.labels![1] !== p2.labels![0] && p1.labels![0] !== p2.labels![1])
@@ -264,7 +267,6 @@ export default class Graph {
         this.addBorders(border);
       }
     }
-    console.log(this.borders.length);
   }
 
   removeExcessiveBorders() {
@@ -325,7 +327,6 @@ export default class Graph {
     let triangles: [BorderPoint, BorderPoint, BorderPoint][] = [];
     const points = this.borderPoints.filter(p => p.borders.filter(b => !b.disabled).length > 2);
     points.forEach(p => {
-      if(p.excluded) return;
       const borders = p.borders.filter(b => !b.disabled);
       const neighbors = borders.map(border => border.p1.pos.equal(p.pos) ? border.p2 : border.p1);
       neighbors.forEach(n => {
@@ -336,9 +337,6 @@ export default class Graph {
           if(nn.borders.filter(b => !b.disabled).length <= 2) return;
           if(neighbors.includes(nn)) {
             triangles.push([p, n, nn]);
-            p.excluded = true;
-            n.excluded = true;
-            nn.excluded = true;
           }
         });
       });
@@ -375,8 +373,8 @@ export default class Graph {
     });
     borderTriangles.forEach((t, i) => {
       t.forEach((border, j) => {
-        // if(i === 2 && j === 0) {
-        //   // console.log("debug", t[j]);
+        // if(i === 4 && j === 0) {
+        //   console.log("debug", t[j]);
         //   this.debugObjects.push(new Point(border.a.x, border.a.y));
         //   this.debugObjects.push(new Point(border.b.x, border.b.y));
         // }
@@ -403,6 +401,10 @@ export default class Graph {
       objectTriangles.push(new Triangle(t));
     });
     // triangles.forEach(t => t.forEach(p => p.borders.forEach(b => b.disabled = true)));
+  }
+
+  getLooseEnds() {
+    return this.borderPoints.filter(p => p.borders.filter(b => !b.disabled).length === 1);
   }
 
 }
